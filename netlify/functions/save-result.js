@@ -1,5 +1,5 @@
 const { getStore } = require("@netlify/blobs");
-const crypto = require("node:crypto");
+const crypto = require("crypto");
 
 exports.handler = async (event) => {
   try {
@@ -9,37 +9,39 @@ exports.handler = async (event) => {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ error: "Método no permitido" })
+        body: JSON.stringify({
+          error: "Método no permitido"
+        })
       };
     }
 
     const body = JSON.parse(event.body || "{}");
     const { email, score, maxScore, percent, date, answers } = body;
 
-    if (!email || typeof score !== "number" || !answers || typeof answers !== "object") {
+    if (!email || Number.isNaN(Number(score))) {
       return {
         statusCode: 400,
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ error: "Datos incompletos" })
+        body: JSON.stringify({
+          error: "Datos incompletos"
+        })
       };
     }
 
-    const safeEmail = String(email).trim().toLowerCase();
-
     const record = {
       id: crypto.randomUUID(),
-      email: safeEmail,
-      score,
-      maxScore,
-      percent,
+      email: String(email).trim().toLowerCase(),
+      score: Number(score),
+      maxScore: Number(maxScore || 0),
+      percent: Number(percent || 0),
       date: date || new Date().toISOString(),
-      answers
+      answers: answers && typeof answers === "object" ? answers : {}
     };
 
     const store = getStore("quiz-results");
-    const key = `result-${record.date}-${record.id}.json`;
+    const key = `result/${record.date}_${record.id}.json`;
 
     await store.setJSON(key, record);
 
@@ -66,4 +68,3 @@ exports.handler = async (event) => {
     };
   }
 };
-
