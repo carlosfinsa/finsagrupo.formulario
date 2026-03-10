@@ -435,6 +435,14 @@
       opacity:0.9;
     }
 
+    .save-status{
+      margin-top:12px;
+      font-size:14px;
+      color:#d8edff;
+      text-align:center;
+      min-height:18px;
+    }
+
     @keyframes fall{
       to{ transform:translateY(110vh) rotate(720deg); opacity:1; }
     }
@@ -565,7 +573,7 @@
         </div>
 
         <div class="question">
-          <p>3. "Cuando un sistema lo permite, ¿activas el doble factor MFA(doble factor de autenticación)?"</p>
+          <p>3. Cuando un sistema lo permite, ¿activas el doble factor MFA (autenticación en dos pasos)?</p>
           <label><input type="radio" name="q3" value="2"> Siempre que está disponible</label>
           <label><input type="radio" name="q3" value="1"> A veces</label>
           <label><input type="radio" name="q3" value="0"> Normalmente lo dejo para más adelante</label>
@@ -622,6 +630,7 @@
 
         <div class="submit-wrap">
           <button type="button" class="cyber-button" onclick="calculateScore()">Ver resultado</button>
+          <div class="save-status" id="saveStatus"></div>
         </div>
       </form>
     </div>
@@ -636,8 +645,7 @@
   <script>
     const totalQuestions = 10;
     let userEmailValue = "";
-
-    const RESULTS_ENDPOINT = "https://euphonious-kashata-5f7a83.netlify.app/.netlify/functions/save-result";
+    const RESULTS_ENDPOINT = "/.netlify/functions/save-result";
 
     const answersData = {
       q1: {
@@ -652,7 +660,7 @@
       },
       q3: {
         correctValue: "2",
-        question: "Cuando un sistema lo permite, ¿activas el doble factor MFA(doble factor de autenticación)?",
+        question: "Cuando un sistema lo permite, ¿activas el doble factor MFA (autenticación en dos pasos)?",
         correctText: "Activar MFA siempre que esté disponible."
       },
       q4: {
@@ -698,6 +706,7 @@
 
     const emailInput = document.getElementById("userEmail");
     const startBtn = document.getElementById("startBtn");
+    const saveStatus = document.getElementById("saveStatus");
 
     emailInput.addEventListener("input", function(){
       const value = this.value.trim();
@@ -745,6 +754,8 @@
 
     async function saveResult(payload){
       try{
+        saveStatus.textContent = "Guardando resultado...";
+
         const response = await fetch(RESULTS_ENDPOINT, {
           method: "POST",
           headers: {
@@ -753,11 +764,21 @@
           body: JSON.stringify(payload)
         });
 
+        const text = await response.text();
+
         if(!response.ok){
-          console.error("No se pudo guardar el resultado");
+          console.error("Error guardando:", text);
+          saveStatus.textContent = "No se pudo guardar el resultado.";
+          return false;
         }
+
+        console.log("Resultado guardado:", text);
+        saveStatus.textContent = "Resultado guardado correctamente.";
+        return true;
       }catch(error){
         console.error("Error guardando resultado:", error);
+        saveStatus.textContent = "Error de conexión al guardar.";
+        return false;
       }
     }
 
@@ -765,6 +786,7 @@
       let total = 0;
       let answered = 0;
       let mistakesHtml = "";
+      const answers = {};
 
       for(let i = 1; i <= totalQuestions; i++){
         const selected = document.querySelector(`input[name="q${i}"]:checked`);
@@ -772,6 +794,14 @@
         if(selected){
           answered++;
           total += parseInt(selected.value, 10);
+
+          answers[`q${i}`] = {
+            selectedValue: selected.value,
+            question: answersData[`q${i}`].question,
+            recommended: answersData[`q${i}`].correctText,
+            correctValue: answersData[`q${i}`].correctValue,
+            isCorrect: selected.value === answersData[`q${i}`].correctValue
+          };
 
           if(selected.value !== answersData[`q${i}`].correctValue){
             mistakesHtml += `
@@ -793,13 +823,15 @@
       const popupBg = document.getElementById("popupBg");
       const maxScore = totalQuestions * 2;
       const percent = Math.round((total / maxScore) * 100);
+      const nowIso = new Date().toISOString();
 
       await saveResult({
         email: userEmailValue,
         score: total,
         maxScore: maxScore,
         percent: percent,
-        date: new Date().toISOString()
+        date: nowIso,
+        answers: answers
       });
 
       let levelClass = "";
@@ -850,6 +882,7 @@
     function restartQuiz(){
       document.getElementById("popupBg").style.display = "none";
       document.getElementById("quiz").reset();
+      saveStatus.textContent = "";
       updateProgress();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
