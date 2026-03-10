@@ -15,33 +15,55 @@ exports.handler = async (event) => {
       };
     }
 
-    const body = JSON.parse(event.body || "{}");
-    const { email, score, maxScore, percent, date, answers } = body;
+    let body = {};
 
-    if (!email || Number.isNaN(Number(score))) {
+    try {
+      body = JSON.parse(event.body || "{}");
+    } catch (e) {
       return {
         statusCode: 400,
         headers: {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          error: "Datos incompletos"
+          error: "JSON inválido",
+          raw: event.body || null
+        })
+      };
+    }
+
+    const email = String(body.email || "").trim().toLowerCase();
+    const score = Number(body.score ?? 0);
+    const maxScore = Number(body.maxScore ?? 0);
+    const percent = Number(body.percent ?? 0);
+    const date = body.date || new Date().toISOString();
+    const answers = body.answers && typeof body.answers === "object" ? body.answers : {};
+
+    if (!email) {
+      return {
+        statusCode: 400,
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          error: "Falta email",
+          received: body
         })
       };
     }
 
     const record = {
       id: crypto.randomUUID(),
-      email: String(email).trim().toLowerCase(),
-      score: Number(score),
-      maxScore: Number(maxScore || 0),
-      percent: Number(percent || 0),
-      date: date || new Date().toISOString(),
-      answers: answers && typeof answers === "object" ? answers : {}
+      email,
+      score,
+      maxScore,
+      percent,
+      date,
+      answers
     };
 
     const store = getStore("quiz-results");
-    const key = `result/${record.date}_${record.id}.json`;
+    const key = `result/${record.id}.json`;
 
     await store.setJSON(key, record);
 
@@ -52,7 +74,8 @@ exports.handler = async (event) => {
       },
       body: JSON.stringify({
         ok: true,
-        id: record.id
+        key,
+        saved: true
       })
     };
   } catch (error) {
@@ -62,8 +85,8 @@ exports.handler = async (event) => {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        error: "Error interno",
-        detail: error.message
+        error: error.message,
+        stack: error.stack
       })
     };
   }

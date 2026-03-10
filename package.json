@@ -1,4 +1,6 @@
 {
+  "name": "test-ciberseguridad",
+  "private": true,
   "dependencies": {
     "@netlify/blobs": "^10.7.1"
   }

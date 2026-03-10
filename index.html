@@ -306,6 +306,13 @@
       margin-top:24px;
     }
 
+    .save-status{
+      margin-top:12px;
+      color:#bfefff;
+      font-size:14px;
+      min-height:18px;
+    }
+
     .popup-bg{
       display:none;
       position:fixed;
@@ -433,14 +440,6 @@
       border-radius:50%;
       animation:burstPop 0.9s ease-out forwards;
       opacity:0.9;
-    }
-
-    .save-status{
-      margin-top:12px;
-      font-size:14px;
-      color:#d8edff;
-      text-align:center;
-      min-height:18px;
     }
 
     @keyframes fall{
@@ -765,14 +764,14 @@
         });
 
         const text = await response.text();
+        console.log("save-result status:", response.status);
+        console.log("save-result body:", text);
 
         if(!response.ok){
-          console.error("Error guardando:", text);
           saveStatus.textContent = "No se pudo guardar el resultado.";
           return false;
         }
 
-        console.log("Resultado guardado:", text);
         saveStatus.textContent = "Resultado guardado correctamente.";
         return true;
       }catch(error){
