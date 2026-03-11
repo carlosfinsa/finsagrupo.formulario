@@ -6,25 +6,18 @@ exports.handler = async (event) => {
     if (event.httpMethod !== "POST") {
       return {
         statusCode: 405,
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          error: "Método no permitido"
-        })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ error: "Método no permitido" })
       };
     }
 
-    let body = {};
-
+    let body;
     try {
       body = JSON.parse(event.body || "{}");
     } catch (e) {
       return {
         statusCode: 400,
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           error: "JSON inválido",
           raw: event.body || null
@@ -42,12 +35,23 @@ exports.handler = async (event) => {
     if (!email) {
       return {
         statusCode: 400,
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           error: "Falta email",
           received: body
+        })
+      };
+    }
+
+    const siteID = process.env.NETLIFY_BLOBS_SITE_ID;
+    const token = process.env.NETLIFY_BLOBS_TOKEN;
+
+    if (!siteID || !token) {
+      return {
+        statusCode: 500,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          error: "Faltan NETLIFY_BLOBS_SITE_ID o NETLIFY_BLOBS_TOKEN en las variables de entorno"
         })
       };
     }
@@ -62,28 +66,23 @@ exports.handler = async (event) => {
       answers
     };
 
-    const store = getStore("quiz-results");
+    const store = getStore("quiz-results", { siteID, token });
     const key = `result/${record.id}.json`;
 
     await store.setJSON(key, record);
 
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         ok: true,
-        key,
-        saved: true
+        key
       })
     };
   } catch (error) {
     return {
       statusCode: 500,
-      headers: {
-        "Content-Type": "application/json"
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         error: error.message,
         stack: error.stack
